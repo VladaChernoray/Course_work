@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "stats.js": "^0.17.0",
+    "three": "^0.140.2",
+    "three-math": "^0.69.0"
+  }
+}

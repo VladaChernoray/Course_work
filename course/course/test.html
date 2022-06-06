@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>three.js webgl - orbit controls</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div id="container"></div>
+<div class="nav_container">
+  <nav id="side_container" class ="side_container">
+    <ul>
+      <li><a class="words" id="one">heart</a></li>
+      <li><a class="words" id ="two">letter</a></li>
+      <li><a class="words" id = "three">sun</a></li>
+      <li><a class="words" id = "four">star</a></li>
+      <li><a class="words" id= "five">place</a></li>
+    </ul>
+  </nav>
+</div>
+<!--<div class="center_container">
+	<p>Tatakae</p>
+</div>
+-->
+<script src="js/three.js"></script>
+<script src="js/tweenmax.js"></script>
+<script src="js/OrbitControls.js"></script>
+
+<script>
+  /*create side menu*/
+  let side_list = document.createElement('div');
+  side_list.classList.add('side_container');
+  document.body.appendChild(side_list);
+
+  const div = document.createElement('div');
+  let size = 100;
+  let canvas = document.createElement('canvas');
+  let temp = canvas.getContext('2d');
+  canvas.width = size;
+  canvas.height = size;
+  canvas.classList.add('canvas');
+  document.body.appendChild(canvas);
+
+
+
+  function getRandomColor() {
+    function color() {
+      let randomColor = Math.floor(Math.random()*256).toString(16);
+      return ("0" + String(randomColor)).substr(-2); // pad with zero
+    }
+    return "#"+color()+color()+color();
+  }
+
+
+  function getImages(paths,whenLoaded){
+    let imagesArray = [];
+    paths.forEach(function(path){
+      let image = new Image;
+      image.onload = function(){
+        imagesArray.push(image);
+        if (imagesArray.length === paths.length){
+          whenLoaded(imagesArray);
+        }
+      }
+      image.src = path;
+    });
+  }
+
+  function fill(array, max){
+    let length = array.length;
+    for(let i = 0;i < max - length;i++){
+      array.push(array[Math.floor(Math.random()*length)])
+    }
+    return array;
+  }
+  function shuffle(temp) {
+    for (let i = temp.length; i; i--) {
+      let j = Math.floor(Math.random() * i);
+      [temp[i - 1], temp[j]] = [temp[j], temp[i - 1]];
+    }
+    return temp;
+  }
+
+  function getCoordinatesFromImage(img){
+    let imageCoordinates = [];
+    temp.clearRect(0,0,size,size);
+    temp.drawImage(img, 0, 0, size, size);
+    let data = temp.getImageData(0, 0, size, size);
+
+    data = data.data;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        let red = data[((size * y) + x) * 4];
+        let green = data[((size * y) + x) * 4 + 1];
+        let blue = data[((size * y) + x) * 4 + 2];
+        let alpha = data[((size * y) + x) * 4 + 3];
+        if (alpha > 0) {
+          imageCoordinates.push([10 * (x - size / 2), 10 * (size / 2 - y)]);
+        }
+      }
+    }
+    return shuffle(fill(imageCoordinates, 1500));
+  }
+
+  let imageArray = ['img/heart.svg','img/JapaA.svg','img/sun.svg','img/star.svg','img/Jap.svg'];
+  getImages(imageArray,function(loadedImages) {
+    let tempImage = [];
+    loadedImages.forEach(function (el, index) {
+      tempImage.push(getCoordinatesFromImage(loadedImages[index]));
+    });
+    //console.log(tempImage);
+
+    // camera specifications
+    let fieldOfView, aspectRatio, nearPlane, farPlane;
+    let camera, controls, scene, renderer, geometry;
+
+    const mouse = new THREE.Vector2();
+    const target = new THREE.Vector2();
+    const windowHalf = new THREE.Vector2( window.innerWidth / 2, window.innerHeight / 2 );
+    //scene
+    //initialisation Three.js scene
+    function init() {
+
+      // camera specifications
+      fieldOfView = 120;
+      aspectRatio =  window.innerWidth / window.innerHeight;
+      nearPlane = 2;
+      farPlane = 1000;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(getRandomColor());
+      renderer = new THREE.WebGLRenderer();
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      let container = document.getElementById('container');
+      container.appendChild(renderer.domElement);
+
+
+      camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
+      camera.position.z = 600;
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      //scene control
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      let texture = (new THREE.TextureLoader).load("texture/particle.png");
+      /*let loader = new THREE.TextureLoader();
+      loader.load('texture/particle.png',
+              function ( texture ) {
+                  let material = new THREE.MeshBasicMaterial( {
+                      map: texture,
+                      size: 10,
+                      vertexColors: THREE.vertexColors,
+                  } );
+              })
+      function randomRgbColor() {
+          let r = randomInteger(255);
+          let g = randomInteger(255);
+          let b = randomInteger(255);
+          return 'rgb(' + r + ',' + g + ',' + b + ')';
+      }*/
+      let material = new THREE.PointCloudMaterial({
+        size: 16,
+        vertexColors: THREE.VertexColors,
+        map: texture,
+        alphaTest: 0.6
+      });
+      geometry = new THREE.Geometry();
+      //create dots on the canvas
+      /*	for (let i = 0; i <= 10000; i++) {
+      let x = Math.sin(i/10)*100;
+      let y = Math.cos(i/10)*100;
+      let z = i*10;
+
+      geometry.vertices.push(new THREE.Vector3(x, y, z));
+      geometry.colors.push(new THREE.Color(0xff0000));
+      var face = new THREE.Face3(0, 1, 2);
+      face.vertexColors[0] = new THREE.Color(0xff0000); // red
+      face.vertexColors[1] = new THREE.Color(0x00ff00); // green
+      face.vertexColors[2] = new THREE.Color(0x0000ff); // blue
+      geometry.faces.push(face);
+  }
+  */
+      tempImage[0].forEach((el, index) => {
+        geometry.vertices.push(new THREE.Vector3(el[0], el[1], Math.random()*100));
+        geometry.colors.push(new THREE.Color(getRandomColor()));
+      })
+
+      let pointCloud = new THREE.PointCloud(geometry, material);
+      scene.add(pointCloud);
+
+      /*renderer = new THREE.WebGLRenderer( { antialias: true } );
+      renderer.setSize( window.innerWidth, window.innerHeight );
+      document.body.appendChild( renderer.domElement );
+
+      document.addEventListener( 'mousemove', onMouseMove, false );
+      document.addEventListener( 'wheel', onMouseWheel, false );*/
+      window.addEventListener("resize", onWindowResize, false);
+    }
+
+    //init camera movement with mouse
+    function onWindowResize() {
+      //windowHalf.set( window.innerWidth / 2, window.innerHeight / 2 );
+
+      camera.aspect = window.innerWidth / window.innerWidth;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerHeight, window.innerWidth);
+    }
+
+    function onMouseMove( event ) {
+      mouse.x = ( event.clientX - windowHalf.x );
+      mouse.y = ( event.clientY - windowHalf.x );
+
+    }
+
+    function onMouseWheel( event ) {
+      camera.position.z += event.deltaY * 0.01; // move camera along z-axis
+    }
+
+
+    // dot movement
+    let i = 0;
+    function animate() {
+      i++;
+      requestAnimationFrame(animate);
+      geometry.vertices.forEach(function (particle, index) {
+        let dx, dy, dz;
+        dx = Math.sin(i / 5 + index / 10) / 2;
+        dy = 0;
+        dz = 0;
+        particle.add(new THREE.Vector3(dx, dy, dz))
+      })
+      /*
+      let angle = 0;
+      let radius = 400;
+      geometry.verticesNeedUpdate = true;
+      camera.position.x = radius * Math.cos( angle );
+      camera.position.z = radius * Math.sin( angle );
+      angle += 0.01;
+      camera.position.x += (mouseX - camera.position.x) * 0.05;
+      camera.position.y += (-mouseY - camera.position.y) * 0.05;
+      camera.lookAt(scene.position);
+      */
+      /*	target.x = ( 1 - mouse.x ) * 0.0002;
+          target.y = ( 1 - mouse.y ) * 0.0002;
+
+          camera.rotation.x += 0.05 * ( target.y - camera.rotation.x );
+          camera.rotation.y += 0.05 * ( target.x - camera.rotation.y );
+*/
+      requestAnimationFrame( animate );
+      render();
+    }
+
+    function render() {
+      renderer.render( scene, camera );
+    }
+
+    init();
+    animate();
+
+    let temporary = 0;
+    let words = document.querySelectorAll('.words');
+    words.forEach(function (elem){
+      elem.addEventListener('click',function(){
+        let temp = elem.id;
+        if ("one" === temp){
+          scene.background = new THREE.Color(getRandomColor());
+          /*temporary++;
+          temporary = temporary % tempImage.length;
+*/
+          geometry.vertices.forEach(function (particle, index) {
+            let timelineMax = new TimelineMax();
+            timelineMax.to(particle, 3, {
+              x: tempImage[0][index][0],
+              y: tempImage[0][index][1]
+            });
+          })
+        }
+        if ("two" === temp){
+          scene.background = new THREE.Color(getRandomColor());
+          /*temporary++;
+          temporary = temporary % tempImage.length;
+*/
+          geometry.vertices.forEach(function (particle, index) {
+            let timelineMax = new TimelineMax();
+            timelineMax.to(particle, 3, {
+              x: tempImage[1][index][0],
+              y: tempImage[1][index][1]
+            });
+          })
+        }
+        if ("three" === temp){
+          scene.background = new THREE.Color(getRandomColor());
+          /*temporary++;
+          temporary = temporary % tempImage.length;
+*/
+          geometry.vertices.forEach(function (particle, index) {
+            let timelineMax = new TimelineMax();
+            timelineMax.to(particle, 3, {
+              x: tempImage[2][index][0],
+              y: tempImage[2][index][1]
+            });
+          })
+        }
+        if ("four" === temp){
+          scene.background = new THREE.Color(getRandomColor());
+          /*temporary++;
+          temporary = temporary % tempImage.length;
+*/
+          geometry.vertices.forEach(function (particle, index) {
+            let timelineMax = new TimelineMax();
+            timelineMax.to(particle, 3, {
+              x: tempImage[3][index][0],
+              y: tempImage[3][index][1]
+            });
+          })
+        }
+        if ("five" === temp){
+          scene.background = new THREE.Color(getRandomColor());
+          /*temporary++;
+          temporary = temporary % tempImage.length;
+*/
+          geometry.vertices.forEach(function (particle, index) {
+            let timelineMax = new TimelineMax();
+            timelineMax.to(particle, 3, {
+              x: tempImage[4][index][0],
+              y: tempImage[4][index][1]
+            });
+          })
+        }
+      })
+    })
+  });
+</script>
+</body>
+</html>
